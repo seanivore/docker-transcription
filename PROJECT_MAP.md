@@ -1,62 +1,60 @@
 # Docker Transcriptions Project Map
 
 ## Project Overview
-A self-hosted speech-to-text transcription service using Whisper AI and Docker. This service provides a web interface for uploading audio files, generating accurate transcriptions, and exporting them in various formats.
+A self-hosted speech-to-text transcription service using OpenAI's Whisper AI and Docker. This service monitors a directory for audio files, transcribes them automatically, and saves the results in both text and JSON formats.
 
 ## Directory Structure
 ```text
 /docker-transcriptions
 ├── docker-compose.yml     # Main Docker configuration
-├── .env                   # Environment variables (if needed)
+├── app/                   # Application code
+│   └── transcribe.py      # Python script for transcription
 ├── data/                  # Persistent storage for uploaded files and transcriptions
-│   ├── uploads/           # Audio files uploaded by users
+│   ├── uploads/           # Audio files to be transcribed
+│   │   └── processed/     # Audio files that have been processed
 │   └── transcriptions/    # Generated transcription files
-├── config/                # Configuration files (if needed)
 └── docs/                  # Project documentation
     └── PROJECT_MAP.md     # This file
 ```
 
 ## Component Relationships
-- Docker container running Whisper Web UI (whishper)
-- Local filesystem for persistent storage
-- Web interface accessible via browser
+- Docker container running Python with Whisper
+- Local filesystem for file monitoring and storage
+- Automatic transcription of audio files
 
 ## Key Files
 ### Core Components
 - `docker-compose.yml`: Main configuration file that defines the Docker service
-- `.env`: (Optional) Environment variables for customization
+- `app/transcribe.py`: Python script that handles transcription
 
-### Configuration
-- `config/`: May contain additional configuration files depending on customization needs
+### Data
+- `data/uploads/`: Directory to place audio files for transcription
+- `data/transcriptions/`: Directory where transcription results are saved
 
 ### Documentation
 - `docs/PROJECT_MAP.md`: Overview of the project structure and workflow
-- `docs/USAGE.md`: Instructions for using the transcription service (to be created)
 
 ## Integration Points
-- Web browser for accessing the UI
-- Audio files as input (MP3, WAV, etc.)
-- Text files as output (TXT, SRT, VTT, etc.)
+- Local filesystem for input and output
+- Audio files as input (MP3, WAV, M4A, etc.)
+- Text and JSON files as output
 
 ## Development Workflow
-1. Modify docker-compose.yml as needed
+1. Modify docker-compose.yml or transcribe.py as needed
 2. Run/restart the Docker container
-3. Access the web UI via browser
-4. Upload audio files for transcription
-5. Download or export transcription results
+3. Place audio files in the uploads directory
+4. Check transcription results in the transcriptions directory
 
 ## Usage Workflow
 1. Start the Docker container
-2. Access the web interface via browser (typically http://localhost:8080)
-3. Upload audio file
-4. Adjust transcription settings if needed
-5. Generate transcription
-6. Edit transcription if needed
-7. Export in desired format
+2. Copy or move audio files to the data/uploads directory
+3. Wait for automatic transcription
+4. Find transcription results in data/transcriptions directory
+5. Original audio files are moved to data/uploads/processed
 
 ## Deployment Architecture
 - Runs locally via Docker
-- Accessible via web browser
+- File-based monitoring and processing
 - Data persistence through Docker volumes
 - No external API dependencies (fully self-contained)
 

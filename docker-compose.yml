@@ -2,13 +2,14 @@ version: '3'
 
 services:
   whisper:
-    image: pluja/whishper:latest
+    image: python:3.10-slim
     container_name: whisper-transcription
-    ports:
-      - "8080:7860"  # Maps port 8080 on your machine to port 7860 in the container
     volumes:
-      - ./data:/data  # Mounts the local data directory to the container
+      - ./data:/data
+      - ./app:/app
     restart: unless-stopped
+    command: >
+      bash -c "apt-get update && apt-get install -y ffmpeg && pip install openai-whisper && python /app/transcribe.py"
     # Optional environment variables can be added here if needed
     # environment:
     #   - KEY=value
