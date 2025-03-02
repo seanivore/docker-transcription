@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  whisper:
+    image: pluja/whishper:latest
+    container_name: whisper-transcription
+    ports:
+      - "8080:7860"  # Maps port 8080 on your machine to port 7860 in the container
+    volumes:
+      - ./data:/data  # Mounts the local data directory to the container
+    restart: unless-stopped
+    # Optional environment variables can be added here if needed
+    # environment:
+    #   - KEY=value
+
+volumes:
+  data:
+    driver: local 
