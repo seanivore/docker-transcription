@@ -1,0 +1,12 @@
+{
+	"folders": [
+        {
+            "path": "../../claud-web"
+        }
+    ],
+    "extensions": {
+        "recommendations": [
+            "juanblanco.solidity"
+        ]
+    }
+}
