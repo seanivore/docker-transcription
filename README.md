@@ -74,10 +74,6 @@ To stop the service, run:
 docker-compose down
 ```
 
-## Project Structure
-
-See the [PROJECT_MAP.md](PROJECT_MAP.md) file for details about the project structure and components.
-
 ## License
 
 This project is open-source and available under the MIT License.
