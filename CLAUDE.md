@@ -1,65 +1,24 @@
-# Docker Transcriptions Project Map
+# docker-transcriptions — Project Map
 
-## Project Overview
-A self-hosted speech-to-text transcription service using OpenAI's Whisper AI and Docker. This service monitors a directory for audio files, transcribes them automatically, and saves the results in both text and JSON formats.
+A self-hosted, drop-a-file speech-to-text service: Docker + faster-whisper (OpenAI Whisper). Drop audio/video into `data/uploads/`; get `.md` / `.srt` / `.txt` / `.json` transcripts in `data/transcriptions/`; the source moves to `data/uploads/processed/`. Fully local, private, no API keys, no cost.
 
-## Directory Structure
-```text
-/docker-transcriptions
-├── docker-compose.yml     # Main Docker configuration
-├── app/                   # Application code
-│   └── transcribe.py      # Python script for transcription
-├── data/                  # Persistent storage for uploaded files and transcriptions
-│   ├── uploads/           # Audio files to be transcribed
-│   │   └── processed/     # Audio files that have been processed
-│   └── transcriptions/    # Generated transcription files
-└── docs/                  # Project documentation
-    └── PROJECT_MAP.md     # This file
-```
+## Living docs (read these first)
+- **Architecture / state / pitfalls** → `assets/docs/AUTO_TRANSCRIBE.md` — the source of truth.
+- **Agent build method** → `.agents/DEV_RULES.md`; agent personality/context → `.agents/AGENTS.md`.
+- **Project lessons** (the clock-drift gotcha) → `.agents/PROJECT_LESSONS.md`.
+- **v2.0 public web tool** (draft plan) → `assets/docs/archive/v2_0/v2_0_0_IMPLEMENT.md`.
 
-## Component Relationships
-- Docker container running Python with Whisper
-- Local filesystem for file monitoring and storage
-- Automatic transcription of audio files
+## Key files
+- `app/transcribe.py` — watch loop + per-file transcription.
+- `app/formats.py` — output formatters (md / srt / txt / json + result-dict normalization).
+- `app/backfill.py` — regenerate `.md`/`.srt` from existing JSON.
+- `Dockerfile` · `docker-compose.yml` (`WHISPER_MODEL` env, model cache volume) · `requirements.txt`.
 
-## Key Files
-### Core Components
-- `docker-compose.yml`: Main configuration file that defines the Docker service
-- `app/transcribe.py`: Python script that handles transcription
+## Run
+`docker compose up -d --build` → drop files in `data/uploads/` → results in `data/transcriptions/`.
+Change model: `WHISPER_MODEL` in `docker-compose.yml`. Backfill: `docker compose exec whisper python /app/backfill.py`.
 
-### Data
-- `data/uploads/`: Directory to place audio files for transcription
-- `data/transcriptions/`: Directory where transcription results are saved
-
-### Documentation
-- `docs/PROJECT_MAP.md`: Overview of the project structure and workflow
-
-## Integration Points
-- Local filesystem for input and output
-- Audio files as input (MP3, WAV, M4A, etc.)
-- Text and JSON files as output
-
-## Development Workflow
-1. Modify docker-compose.yml or transcribe.py as needed
-2. Run/restart the Docker container
-3. Place audio files in the uploads directory
-4. Check transcription results in the transcriptions directory
-
-## Usage Workflow
-1. Start the Docker container
-2. Copy or move audio files to the data/uploads directory
-3. Wait for automatic transcription
-4. Find transcription results in data/transcriptions directory
-5. Original audio files are moved to data/uploads/processed
-
-## Deployment Architecture
-- Runs locally via Docker
-- File-based monitoring and processing
-- Data persistence through Docker volumes
-- No external API dependencies (fully self-contained)
-
-## Technical Requirements
-- Docker and Docker Compose installed
-- Sufficient disk space for audio files and models
-- Sufficient RAM for running Whisper AI models
-- Network connectivity for initial Docker image download
+## Guardrails
+- `data/` is **gitignored** — private audio/transcripts must never be committed (this is a public repo).
+- Startup must never depend on the network or the wall clock (the v1.0 clock-drift lesson — see `PROJECT_LESSONS.md`).
+- Keep the `.json` output whisper-compatible even if the engine changes.
