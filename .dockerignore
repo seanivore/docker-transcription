@@ -1,0 +1,18 @@
+# Keep the build context small — only app/, Dockerfile, requirements.txt matter.
+data/
+.git/
+.github/
+.agents/
+.claude/
+.cursor/
+.vscode/
+assets/
+*.md
+.env
+.env.reference
+example.env
+.DS_Store
+**/.DS_Store
+__pycache__/
+**/__pycache__/
+*.pyc

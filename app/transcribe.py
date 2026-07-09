@@ -1,79 +1,110 @@
 #!/usr/bin/env python3
 """
-A simple script to transcribe audio files using OpenAI's Whisper model.
+Watch an uploads directory and transcribe any audio/video file dropped there,
+using faster-whisper (CTranslate2 — CPU, no PyTorch). Writes four outputs per
+file, then moves the source into ``processed/``.
+
+Outputs for a source ``name.ext``:
+  - ``{name}_{timestamp}.json``   full result (whisper-compatible schema)
+  - ``{name}_{timestamp}.txt``    plain-text lump
+  - ``{name}_{timestamp}.srt``    subtitles
+  - ``{name}.md``                 human-readable timestamped transcript (clean, stable name)
+
+Model is chosen by the WHISPER_MODEL env var (default ``large-v3``).
 """
 
-import os
 import glob
-import json
-import whisper
+import os
 import time
 from datetime import datetime
 
+from faster_whisper import WhisperModel
+
+import formats
+
 UPLOADS_DIR = "/data/uploads"
 TRANSCRIPTIONS_DIR = "/data/transcriptions"
-MODEL_SIZE = "base"  # Options: tiny, base, small, medium, large
+PROCESSED_DIR = os.path.join(UPLOADS_DIR, "processed")
 
-# Ensure transcriptions directory exists
+MODEL_SIZE = os.getenv("WHISPER_MODEL", "large-v3")
+COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8")
+POLL_SECONDS = int(os.getenv("POLL_SECONDS", "10"))
+
+# Everything ffmpeg can decode. ffmpeg (baked into the image) does the actual
+# decoding, so this list is broad on purpose — incl. Apple Messages ``.caf``.
+AUDIO_EXTS = [
+    "mp3", "wav", "m4a", "m4b", "mp4", "m4v", "mov", "mkv", "avi", "wmv",
+    "mpeg", "mpga", "mp2", "webm", "ogg", "oga", "opus", "spx", "flac",
+    "aac", "caf", "aiff", "aif", "amr", "wma", "3gp", "ts", "flv",
+]
+
 os.makedirs(TRANSCRIPTIONS_DIR, exist_ok=True)
+os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-def transcribe_audio(file_path):
-    """Transcribe an audio file using Whisper."""
-    print(f"Loading Whisper model: {MODEL_SIZE}")
-    model = whisper.load_model(MODEL_SIZE)
-    
-    print(f"Transcribing file: {file_path}")
-    result = model.transcribe(file_path)
-    
-    # Create output filename
+
+def log(msg: str) -> None:
+    print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {msg}", flush=True)
+
+
+def is_stable(file_path: str, wait: float = 2.0) -> bool:
+    """Avoid grabbing a file mid-copy: skip it if its size is still changing."""
+    try:
+        size1 = os.path.getsize(file_path)
+        time.sleep(wait)
+        size2 = os.path.getsize(file_path)
+    except OSError:
+        return False
+    return size1 == size2 and size1 > 0
+
+
+def transcribe_audio(model: WhisperModel, file_path: str) -> None:
     base_name = os.path.basename(file_path)
-    name_without_ext = os.path.splitext(base_name)[0]
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_json = os.path.join(TRANSCRIPTIONS_DIR, f"{name_without_ext}_{timestamp}.json")
-    output_txt = os.path.join(TRANSCRIPTIONS_DIR, f"{name_without_ext}_{timestamp}.txt")
-    
-    # Save the full result as JSON
-    with open(output_json, "w") as f:
-        json.dump(result, f, indent=2)
-    
-    # Save just the text as TXT
-    with open(output_txt, "w") as f:
-        f.write(result["text"])
-    
-    print(f"Transcription complete. Results saved to {output_json} and {output_txt}")
-    
-    # Move the processed file to a "processed" subdirectory
-    processed_dir = os.path.join(UPLOADS_DIR, "processed")
-    os.makedirs(processed_dir, exist_ok=True)
-    new_location = os.path.join(processed_dir, base_name)
-    os.rename(file_path, new_location)
-    print(f"Moved {file_path} to {new_location}")
+    name = os.path.splitext(base_name)[0]
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    log(f"Transcribing: {base_name}")
+    segments, info = model.transcribe(file_path)
+    result = formats.build_result_dict(segments, info)
+    log(f"  language={info.language} ({info.language_probability:.2f}), "
+        f"duration={info.duration:.0f}s, segments={len(result['segments'])}")
+
+    stem = os.path.join(TRANSCRIPTIONS_DIR, f"{name}_{ts}")
+    formats.write_json(result, stem + ".json")
+    formats.write_text(result, stem + ".txt")
+    formats.write_srt(result, stem + ".srt")
+    formats.write_markdown(result, os.path.join(TRANSCRIPTIONS_DIR, f"{name}.md"), name)
+    log(f"  wrote {name}_{ts}.json/.txt/.srt + {name}.md")
+
+    os.rename(file_path, os.path.join(PROCESSED_DIR, base_name))
+    log(f"  moved {base_name} -> processed/")
+
+
+def pending_files():
+    for ext in AUDIO_EXTS:
+        for file_path in sorted(glob.glob(os.path.join(UPLOADS_DIR, f"*.{ext}"))):
+            base = os.path.basename(file_path)
+            if os.path.isfile(file_path) and not base.startswith("."):
+                yield file_path
+
 
 def main():
-    """Main function that watches for new files and transcribes them."""
-    print("Starting Whisper transcription service...")
-    print(f"Watching directory: {UPLOADS_DIR}")
-    print(f"Using model: {MODEL_SIZE}")
-    
-    # First, process any existing files
-    for ext in ["mp3", "wav", "m4a", "mp4", "mpeg", "mpga", "webm", "ogg"]:
-        pattern = os.path.join(UPLOADS_DIR, f"*.{ext}")
-        for file_path in glob.glob(pattern):
-            if os.path.isfile(file_path) and not os.path.basename(file_path).startswith('.'):
-                transcribe_audio(file_path)
-    
-    # Then enter watch mode
-    print("Initial processing complete. Entering watch mode...")
-    
+    log("Starting Whisper transcription service (faster-whisper).")
+    log(f"Watching: {UPLOADS_DIR}  |  model={MODEL_SIZE}  compute={COMPUTE_TYPE}")
+    log("Loading model (first run downloads it to the cache volume; instant after).")
+    model = WhisperModel(MODEL_SIZE, device="cpu", compute_type=COMPUTE_TYPE)
+    log("Model ready. Entering watch loop.")
+
     while True:
-        for ext in ["mp3", "wav", "m4a", "mp4", "mpeg", "mpga", "webm", "ogg"]:
-            pattern = os.path.join(UPLOADS_DIR, f"*.{ext}")
-            for file_path in glob.glob(pattern):
-                if os.path.isfile(file_path) and not os.path.basename(file_path).startswith('.'):
-                    transcribe_audio(file_path)
-        
-        # Wait before checking again
-        time.sleep(10)
+        for file_path in pending_files():
+            if not is_stable(file_path):
+                log(f"Skipping (still copying?): {os.path.basename(file_path)}")
+                continue
+            try:
+                transcribe_audio(model, file_path)
+            except Exception as e:
+                log(f"ERROR on {os.path.basename(file_path)}: {e}")
+        time.sleep(POLL_SECONDS)
+
 
 if __name__ == "__main__":
-    main() 
+    main()

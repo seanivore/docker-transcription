@@ -1,5 +1,12 @@
 # Environment variables
 .env
+.env.reference
+
+# Private data — audio files + transcripts stay LOCAL (this repo is public)
+/data/uploads/*
+/data/transcriptions/*
+!/data/uploads/.gitkeep
+!/data/transcriptions/.gitkeep
 
 # Virtual environment
 venv/

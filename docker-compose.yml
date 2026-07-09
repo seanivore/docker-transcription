@@ -1,19 +1,19 @@
-version: '3'
-
 services:
   whisper:
-    image: python:3.10-slim
+    build: .
     container_name: whisper-transcription
+    environment:
+      # Model accuracy/speed knob. large-v3 = multilingual, top accuracy.
+      # Drop to "medium" or "small" if RAM is tight; no rebuild needed.
+      - WHISPER_MODEL=large-v3
+      # - WHISPER_COMPUTE_TYPE=int8   # int8 (default) is lightest on CPU
     volumes:
       - ./data:/data
       - ./app:/app
+      # Persist downloaded models across rebuilds (first run fetches ~1-3 GB).
+      - whisper-cache:/root/.cache/huggingface
     restart: unless-stopped
-    command: >
-      bash -c "apt-get update && apt-get install -y ffmpeg && pip install openai-whisper && python /app/transcribe.py"
-    # Optional environment variables can be added here if needed
-    # environment:
-    #   - KEY=value
 
 volumes:
-  data:
-    driver: local 
+  whisper-cache:
+    driver: local
