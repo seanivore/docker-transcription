@@ -74,11 +74,11 @@ docker-transcriptions/
 
 ## Documentation
 
-| Document | Description |
-| -------- | ----------- |
-| [Architecture](assets/docs/AUTO_TRANSCRIBE.md) | Complete technical reference, run/test, pitfalls |
-| [v2.0 roadmap](assets/docs/archive/v2_0/v2_0_0_IMPLEMENT.md) | Draft plan for a free public web version |
-| [Agent protocols](.agents/DEV_RULES.md) | Cross-project build method & conventions |
+| Document                                                     | Description                                      |
+| ------------------------------------------------------------ | ------------------------------------------------ |
+| [Architecture](assets/docs/AUTO_TRANSCRIBE.md)               | Complete technical reference, run/test, pitfalls |
+| [v2.0 roadmap](assets/docs/archive/v2_0/v2_0_0_IMPLEMENT.md) | Draft plan for a free public web version         |
+| [Agent protocols](.agents/DEV_RULES.md)                      | Cross-project build method & conventions         |
 
 ---
 
@@ -88,6 +88,12 @@ docker-transcriptions/
 - **Backfill old transcripts** with the new formats: `docker compose exec whisper python /app/backfill.py`.
 - **Update dependencies**: `docker compose build --pull` (or let Dependabot open weekly PRs).
 - **Turnaround** scales with audio length × model size. Short clips are quick; a long file on `large-v3` will take a while on CPU — drop to `medium` if needed.
+
+### Remember
+
+  Same as always — drop a file in data/uploads/. To change accuracy: edit WHISPER_MODEL in
+  docker-compose.yml (→ medium if RAM ever feels tight) and docker compose up -d. Re-format old
+  transcripts anytime: docker compose exec whisper python /app/backfill.py
 
 ---
 
