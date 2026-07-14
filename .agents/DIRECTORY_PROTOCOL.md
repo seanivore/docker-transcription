@@ -30,10 +30,22 @@ These are filename with versioning standards that keep project directory structu
 ### Other File Types
 
 You certainly might need other file types. They should be named similarly and use the version number to keep them in the appropriate place in the development cycle.
-`v4_0_7_GPT_INSTRUCTIONS.txt`, `v4_0_7_GPT_SCHEMA.txt`, `v4_0_9_CD_HANDOFF.md`
+`v4_0_7_GPT_INSTRUCTIONS.txt`, `v4_0_7_GPT_SCHEMA.txt`, `v4_0_9_CD_HANDOFF.md`, `v0_2_1_CD_DESCRIBE_PROMPT.md`
 
 You also might need to jot down few different versions of functionality concept sketches to place in a version directory ahead of the current state. 
 `v3_3_0_FUTURE_design-polish.md`, `v3_3_0_FUTURE_empty-state.md`, etc. these are often created as just `FUTURE_concept.md` and the version number is added later when it is known where they will land because the build has caught up to them. 
+
+## Versioning
+
+A three-part `vMAJOR.MINOR.PATCH` counter lives for the project's life — starting at the first IMPLEMENT draft and continuing through planning rounds into shipped releases. It is one internal counter, not a customer-facing release number. (The *why* — one counter, plan-version-is-ship-version — lives in `.agents/DEV_RULES.md § Versioning`; the mechanics are here.)
+
+  - **MAJOR** — architectural rewrite, deployment-target change, or a breaking external change.
+  - **MINOR** — new feature, capability shift, or a breaking-but-internal change.
+  - **PATCH** — bug fix, doc-only update, or a micro-tweak that doesn't change the feature surface.
+
+Higher bump resets lower to zero (`v3.1.5` → `v3.2.0`). No change, no bump. Plan version IS ship version when nothing changed between them — a gate-cleared `v5_0_3_IMPLEMENT.md` ships under git tag `v5.0.3`.
+
+**Delimiters:** dots everywhere (`v3.1.2`, git tags, commit messages) **except filenames**, which use underscores (`v3_1_2_IMPLEMENT.md`) — dots in filenames cause tooling issues. **Git tags are pure numeric** (`v3.1.2`, never `v3.1.2-fix`); human labels go in the commit body / GitHub Release; re-pointing a tag = delete + recreate.
 
 ## Directory Example 
 

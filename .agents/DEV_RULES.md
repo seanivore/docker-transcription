@@ -1,6 +1,6 @@
 # Development Protocols
 
-**Version**: v4.2.0 · **Last Updated**: 2026-07-09
+**Version**: v4.4.0 · **Last Updated**: 2026-07-10
 **Purpose**: How we plan and build with agentic tools — planning to *exclusively executable*, proven by *fresh-instance gap review*. **Read THE CORE first**; the rest is machinery + reference.
 **Syncing**: one canonical copy, propagated to every project via `filemgmt` (§ *Conventions → Syncing*).
 **Changelog**: at the bottom of this doc (one line per version) + full history in git — this masthead stays lean on purpose.
@@ -22,6 +22,21 @@ Our whole method rests on one inversion of the old norm: **with today's tools, c
 5. **Don't build a big thing in one breath. Orchestrate.** Large work decouples into independently buildable chunks; an orchestrator delegates tightly-scoped tasks to fresh subagents. (Subagents for *parallel building* — distinct from the fresh-instance *review gate* in #2.)
 
 Everything below is the machinery that makes these five real.
+
+---
+
+## How we work — the day-to-day
+
+The operational orientation a fresh agent wants first: how a session actually runs. (The *why* is THE CORE above; the detailed mechanics are in the sections below.)
+
+- **Start a project** from the two starter templates in `.agents/_TEMPLATES/`: copy `PROJECT_NAME.md` into the project as its living architecture doc (renamed for the project), and `README.md` as the base README. Never write either from scratch — they improve as they're adapted, and `filemgmt` flows those improvements back to the fleet (§ *Conventions → Syncing*).
+- **Wrap a session** by asking whether the living docs still reflect reality: the architecture doc, the active IMPLEMENT, the project memory. Leave them current for the next thread.
+- **Never budget tokens.** You have 1M of context. Be context-smart — delegate to peer-agents, plan thoroughly ahead — but thorough, detail-oriented, pragmatic work beats speed, and corner-cutting is unacceptable. In Sean's words: *"There is no rush! If the plan for the session is large, just take your time, plan it out, delegate, and take it one thing at a time. You are not in a race and you are not trying to save up on tokens."*
+- **Skills are yours.** Globally-installed Agent Skills live at `~/.agents/skills` (not `~/.claude/skills`, where agents reflexively look and find nothing). Plan them in freely, and look up new ones whenever a task could use one — especially for design or a service we use. Smart surprises in the plan are welcome.
+- **CLI over MCP, always** (MCP is unreliable/incomplete). Look up a CLI's current docs before driving it. Available + logged-in: **Cloudflare** (edits DNS for `august.style`), **Vercel**, **GitHub**, **Stripe**. If a useful CLI isn't installed, say so — the answer is almost always yes. Verify by driving the real thing (§ *Conventions → Agentic testing*).
+- **Git is the progress log.** Commit often — typically per file — with descriptive, per-file detail; the history *is* the record of what happened (no separate session-log or build-report file). Push freely to `dev`; **never to `main`** without explicit sign-off (§ *Git Branching*).
+- **Tend the memory.** Keep the project's auto-memory (`~/.claude/projects/<project>/memory/`) tended and trimmed. The two-orchestrator pattern — a planning thread, then a fresh execution thread — writes the best memories, because each writes for the next.
+- **Compaction is the handoff.** You write your own compact arg **when Sean asks** (he watches the context and requests it while it's fresh) — not proactively, and not into a file. Long is fine; context restarts at 0% after a compact, so carry everything forward. A worked model lives at `.agents/_EXAMPLES/COMPACT_ARG_example.md`.
 
 ---
 
@@ -65,7 +80,7 @@ The larger a task, the more an agent instinctively *shrinks* it to stay in its c
 | **Good for** | breadth, first-pass cleanup while drafting           | *certifying* exclusively-executable before promotion                                        |
 | **Limit**    | shares the session's blind spots & assumptions       | — this is the real gate                                                                     |
 
-Subagent passes are useful early. **They are not the gate.** Promotion to a BUILD requires fresh-instance passes. An orchestrator that "reviews its own plan" or "spawns subagents instead" has **not** passed the gate, however thorough it was.
+Subagent passes are useful early. **They are not the gate.** Certifying the plan as ready to execute requires fresh-instance passes. An orchestrator that "reviews its own plan" or "spawns subagents instead" has **not** passed the gate, however thorough it was.
 
 ### Access determines what a reviewer can even find
 
@@ -83,10 +98,10 @@ The **cold / no-repo** reviewer is the only one that can *prove* self-containmen
 
 1. **Orchestrator** drafts/extends the IMPLEMENT (living; sessions refine it). Optional: in-session subagent passes for first-draft breadth.
 2. **Run the gate:** fresh instances, one per angle, **a new instance per pass** (no context contamination). Each writes findings to a file (`vX_Y_Z_GAP_REVIEW_<angle>.md`); a no-filesystem tool prints the full file contents to paste in.
-3. **Orchestrator folds** real findings into IMPLEMENT; notes it in the SESSION log. A "gap" that's actually an architecture decision → pause, surface to the human (don't research it away). Watch for *plan drift* — fresh reviewers know only what the plan says, not what it's *for*, so they sometimes reshape the architecture; steer back or escalate.
+3. **Orchestrator folds** real findings into IMPLEMENT (the fold recorded in a descriptive git commit). A "gap" that's actually an architecture decision → pause, surface to the human (don't research it away). Watch for *plan drift* — fresh reviewers know only what the plan says, not what it's *for*, so they sometimes reshape the architecture; steer back or escalate.
 4. **Repeat** until each angle's fresh pass returns nothing load-bearing.
 5. **Stop conditions** (any): each angle finds only nitpicks (resolvable without research); OR an architecture decision surfaces (→ human); OR token/time budget hit (→ ask human).
-6. **Gate clears → human approves → promote the chunk to a BUILD.** No code before this. The orchestrator who runs the BUILD writes a `BUILD_REPORT`; its findings flow back into IMPLEMENT.
+6. **Gate clears → human approves → execute.** No code before this. The gate-cleared IMPLEMENT *is* the executable guide, run directly (the orchestrator parallelizing via subagent groupings). Deviations found while building are captured in descriptive git commits and fold back into the next IMPLEMENT round.
 
 **One drafting session is never the finished plan.** A pass that finds *anything* means you're not done — loop until a *fresh* pass of each angle finds nothing load-bearing. Subagents surfacing gaps is **not** permission to stop; it's proof there's more to find. The 90/10 ratio is **literal, not hyperbole**: an exclusively-executable plan takes multiple rounds, usually across multiple sessions. (Drafting/refining with one agent over several rounds is normal and good — *then* the fresh-instance gate certifies it.)
 
@@ -130,7 +145,7 @@ Run angle A in a no-repo tool; B/C/D in fresh repo instances.
 You are a senior engineer doing a pre-build gap review. Effort: maximum. Do NOT change code or existing docs — your only output is your findings (write them to `[vX_Y_Z_GAP_REVIEW_<A|B|C>.md]`, or print the full file contents if you have no filesystem).
 
 CONTEXT
-- `[path to the BUILD/IMPLEMENT]` is a packet a FRESH agent will execute against [this repo / from the doc alone], then test on [preview]. It is meant to be "exclusively executable": it embeds the exact current code and exact replacement for every edit, so the builder only LOCATES and APPLIES — never DISCOVERS or DECIDES.
+- `[path to the IMPLEMENT]` is a packet a FRESH agent will execute against [this repo / from the doc alone], then test on [preview]. It is meant to be "exclusively executable": it embeds the exact current code and exact replacement for every edit, so the builder only LOCATES and APPLIES — never DISCOVERS or DECIDES.
 - [Project landmines to respect — the hard-won truths, e.g. "the X integration's public docs are wrong for the loaded bundle; the real surface is Y." Give the reviewer these so it validates against reality, not training data.]
 
 ANGLE — [pick one]
@@ -153,7 +168,7 @@ A reviewer who already saw draft v1 unconsciously fills gaps from memory instead
 
 Two condensing passes shed the scaffolding as the loop converges — both exclusively-executable work, not optional polish:
 - **Clean-up read (before the suspected last, NARROW, A pass).** Round-after-round surgical edits leave stray/outdated references; do a deliberate **end-to-end read** to catch them and condense the doc, then a breadth-subagent pass.
-- **Build Guide Final Cuts (after every angle verdicts READY).** Strip what's the *wrong context* for the execution orchestrator — changelog, **provenance**, slipped-scope rationale, resolved-edges, owner-decision tags, gap-review framing, excessive prose — keeping the byte-exact anchors. Move substantial rationale to a sibling **`vX_Y_Z_RATIONALE.md`** with a *"don't read the rationale unless you must"* note in the IMPLEMENT. (Broad context genuinely helps an LLM, but as the guide nears ~100k tokens it shouldn't be *forced* — the same reason TESTING/DESIGN already live in addenda: the IMPLEMENT must *feel* manageable.) This cut drives a **MAJOR** bump (plan → execution); a mere recent-build delta bumps **MINOR**.
+- **Build Guide Final Cuts (after every angle verdicts READY).** Strip what's the *wrong context* for the execution orchestrator — changelog, **provenance**, slipped-scope rationale, resolved-edges, owner-decision tags, gap-review framing, excessive prose — keeping the byte-exact anchors. Move substantial rationale to a sibling **`_RATIONALE.md`** with a *"don't read the rationale unless you must"* note in the IMPLEMENT. (Broad context genuinely helps an LLM, but as the guide nears ~100k tokens it shouldn't be *forced* — the same reason TESTING/DESIGN already live in addenda: the IMPLEMENT must *feel* manageable.) This cut drives a **MAJOR** bump (plan → execution); a mere recent-build delta bumps **MINOR**.
 
 ### Orchestrator hygiene — compact forward, keep memories
 
@@ -163,22 +178,22 @@ The Build-Guide orchestrator is long-lived across many rounds, so manage its con
 
 ## What "Exclusively Executable" Requires
 
-The mechanical guarantees behind the claim. A BUILD that violates any of these isn't ready.
+The mechanical guarantees behind the claim. An executable plan that violates any of these isn't ready.
 
 ### Confirmed decisions only
-The IMPLEMENT/BUILD the executing agent reads contains **only confirmed decisions** — no alternatives, no "we could X or Y," no "TBD," no "Decision Dn" markers. Everything was discussed, researched, and locked earlier. If a subagent surfaces a decision-shaped question mid-build, that's a real plan bug: **stop, surface to the human, fix the plan, continue. Never decide on the agent's own.** This is what makes "exclusively executable" mechanically true — the agent has nothing to decide, so it can't decide wrong.
+The IMPLEMENT the executing agent reads contains **only confirmed decisions** — no alternatives, no "we could X or Y," no "TBD," no "Decision Dn" markers. Everything was discussed, researched, and locked earlier. If a subagent surfaces a decision-shaped question mid-build, that's a real plan bug: **stop, surface to the human, fix the plan, continue. Never decide on the agent's own.** This is what makes "exclusively executable" mechanically true — the agent has nothing to decide, so it can't decide wrong.
 
 ### No mixed truth
-Never put a known-wrong fact and the right one in the same context — an LLM can't be trusted to pick the right one consistently. Remove or fix **before** the agent sees the plan: stale paths, superseded decisions, "bug noted but not patched," "carry forward from vX" redirects, "Phase 0 fixes these bugs" folded into forward spec. Code-level fixes happen in a **prep session**; only the post-fix world enters the next IMPLEMENT. Closeouts / BUGS / FEEDBACK / prior IMPLEMENTs are *historical archive* — their content folds in as standing behavior; the executing agent never reads them. **Fix or remove, then execute. Don't ask an LLM to debug your context.**
+Never put a known-wrong fact and the right one in the same context — an LLM can't be trusted to pick the right one consistently. Remove or fix **before** the agent sees the plan: stale paths, superseded decisions, "bug noted but not patched," "carry forward from vX" redirects, "Phase 0 fixes these bugs" folded into forward spec. Code-level fixes happen in a **prep session**; only the post-fix world enters the next IMPLEMENT. BUG_REPORT / FEEDBACK / prior IMPLEMENTs are *historical archive* — their content folds in as standing behavior; the executing agent never reads them. **Fix or remove, then execute. Don't ask an LLM to debug your context.**
 
 ### No open human-action items
-The executable doc carries **zero "for Sean" items.** Any step that needs the human — a real fork, an irreversible/outward action, a taste call, a credential — is **surfaced in chat the moment it's found** (this session, or an explicit note handed to a future one), resolved, and **removed from the plan before it's called executable.** The failure this kills: reaching execution kickoff and *then* discovering human-action notes tangled into the build — where they're usually already-done, moot, or agent-doable anyway, so they stall the build for nothing. **Before assuming something needs the human, check whether a CLI or an agent can confirm or handle it** (they usually can). Only what genuinely can't be resolved that way reaches Sean — early, in chat, never buried at the bottom of a BUILD.
+The executable doc carries **zero "for Sean" items.** Any step that needs the human — a real fork, an irreversible/outward action, a taste call, a credential — is **surfaced in chat the moment it's found** (this session, or an explicit note handed to a future one), resolved, and **removed from the plan before it's called executable.** The failure this kills: reaching execution kickoff and *then* discovering human-action notes tangled into the build — where they're usually already-done, moot, or agent-doable anyway, so they stall the build for nothing. **Before assuming something needs the human, check whether a CLI or an agent can confirm or handle it** (they usually can). Only what genuinely can't be resolved that way reaches Sean — early, in chat, never buried at the bottom of the executable plan.
 
-### No pass-through between tracks
-When a BUILD surfaces a gap/bug — even one affecting the next sequential track — **do not patch the next BUILD inline.** Finish the current scope (report it) → a planning session updates IMPLEMENT → the next BUILD is created *with the gap already resolved.* A packet carrying both correct and corrected info is mixed truth; pass-through erases the loop's value.
+### No pass-through between execution chunks
+When execution surfaces a gap/bug — even one affecting a later chunk — **do not silently patch the later chunk inline.** Finish the current scope, capture the gap (a descriptive git commit + a note to carry forward), and let a planning session fold it into the next IMPLEMENT round so the fix lands *once*, cleanly. A chunk carrying both the original and the corrected fact is mixed truth; inline pass-through erases the loop's value.
 
 ### The orchestrator's blueprint (parallel groundwork)
-The **ready-to-execute guide** (the IMPLEMENT run directly, or a TRACK BUILD if one was carved — § *Two operating modes*) hands the executing orchestrator a starting point for parallel work so it doesn't design it cold — the operational answer to the Orchestration Paradox:
+The gate-cleared IMPLEMENT hands the executing orchestrator a starting point for parallel work so it doesn't design it cold — the operational answer to the Orchestration Paradox:
 - **Subagent groupings** per phase: what runs in parallel, what dependencies sequence it, what context each subagent needs.
 - **Boundaries of delegation:** what the orchestrator does NOT delegate (gate decisions, branch state, commit cadence, escalation, verification reads).
 - **Placeholders as decouplers:** strict `<!-- PLACEHOLDER: ... -->` conventions sever cross-team dependencies (frontend builds against a placeholder while backend builds the real thing). Treat groupings as a starting point, not a contract.
@@ -191,80 +206,67 @@ The **ready-to-execute guide** (the IMPLEMENT run directly, or a TRACK BUILD if 
 
 A three-part `vMAJOR.MINOR.PATCH` lives for the project's life, **starting at the first IMPLEMENT draft** and continuing through planning rounds into shipped releases. **Version numbers are internal artifacts that serve our work — not a customer-facing release counter.** One continuous track covers planning → rounds → ships.
 
-| Position  | Bumps when                                                                    |
-| --------- | ----------------------------------------------------------------------------- |
-| **MAJOR** | Architectural rewrite, deployment-target change, breaking external change     |
-| **MINOR** | New feature, capability shift, breaking-but-internal change                   |
-| **PATCH** | Bug fix, doc-only update, micro-tweak that doesn't change the feature surface |
+The MAJOR / MINOR / PATCH bump table + the delimiter rules are catalogued in `.agents/DIRECTORY_PROTOCOL.md § Versioning` (the canonical numbering reference); the notes here are the *why* behind running one counter this way.
 
-Higher bump resets lower to zero (`v3.1.5` → `v3.2.0`). **No change, no bump; the number tracks changes regardless of source.** A planning round that meaningfully revises the doc bumps it: `v5_0_0_IMPLEMENT` → `v5_0_1` (after feedback) → `v5_0_2` (after a cold pass) → `v5_0_3` (exclusively executable). When the BUILD from `v5_0_3` ships clean, the git tag is `v5.0.3` — *the same number.* Plan version IS ship version when nothing changed between them. **Addendums to an IMPLEMENT** (e.g. `…_ADDENDUM_DESIGN.md`) share its version and bump in lockstep — see *Addendums*.
+Higher bump resets lower to zero (`v3.1.5` → `v3.2.0`). **No change, no bump; the number tracks changes regardless of source.** A planning round that meaningfully revises the doc bumps it: `v5_0_0_IMPLEMENT` → `v5_0_1` (after feedback) → `v5_0_2` (after a cold pass) → `v5_0_3` (exclusively executable). When `v5_0_3` ships clean, the git tag is `v5.0.3` — *the same number.* Plan version IS ship version when nothing changed between them. **Addendums to an IMPLEMENT** (e.g. `…_ADDENDUM_DESIGN.md`) share its version and bump in lockstep — see *Addendums*.
 
 *Why we don't reserve numbers for releases:* that's a UX gesture from when versions were dressed up for users; our lifecycle is 90% planning, so planning gets the same machinery. Users find a changelog fine without gap-free numbers. Each file's 2-line header says whether it's a planning revision or a ship artifact — **trust the header, not filename pattern-matching.**
 
-**Long, multi-angle gate loops — demarcate phases with a MINOR bump.** The default above (each pass bumps PATCH) is right for a normal loop. When a gate runs many rounds across multiple angles and the per-version `docs/archive/vX_Y/` dir gets large, you MAY open each new *review phase* with a MINOR bump so each phase keeps its own directory and a self-contained patch-trail: the holistic A-loop lives in `vX.5.*`, the B/C round opens at `vX.6.0`, and execution/as-built opens the next MAJOR (`v(X+1).0.0`). (Everlastings v1.5: A ran in `v1_5/` as `v1.5.1…v1.5.9`, B/C opened at `v1_6/` `v1.6.0`, the build will open `v2.0.0`.) The number still tracks changes (no empty bumps); the minor boundary just keeps a long trail navigable, and the major boundary marks plan→as-built (where the review scaffolding is finally shed).
+**Long, multi-angle gate loops — demarcate phases with a MINOR bump.** The default above (each pass bumps PATCH) is right for a normal loop. When a gate runs many rounds across multiple angles and the per-version `docs/archive/vX_Y/` dir gets large, you MAY open each new *review phase* with a MINOR bump so each phase keeps its own directory and a self-contained patch-trail: the holistic A-loop lives in `vX.5.*`, the B/C round opens at `vX.6.0`, and execution opens the next MAJOR (`v(X+1).0.0`). (Everlastings v1.5: A ran in `v1_5/` as `v1.5.1…v1.5.9`, B/C opened at `v1_6/` `v1.6.0`, execution opens `v2.0.0`.) The number still tracks changes (no empty bumps); the minor boundary just keeps a long trail navigable, and the major boundary marks plan→execution (where the review scaffolding is finally shed).
 
 **Archiving IMPLEMENT updates during initial planning phases and folding in human surfaced feedback revisions — keep all old documents by COPYING the file first, then updating the new file with changes.** -- This is notably different from the very next rule. The logic is that in the beginning phases of planning and when human provides feedback during the process, then the actual original (for example when looking at v1_5_4_IMPLEMENT.md) is still extremely valuable context for future work, and should remain in the directory (right next to the new v1_5_5_IMPLEMENT.md in our example). Whereas the GAP REVIEW surfaced revisions have all the valuable information in the GAP_REVIEW meaning keeping all copies of the IMPLEMENT.md version in the directory isn't necessary. The next note emphasizes this. 
 
-**Archiving GAP REVIEW surfaced revisions — current-only living docs; keep the records.** When GAP REVIEWS bump from revisions they surfaced, the **living planning docs** (the IMPLEMENT + its addendums + the review-prompt charters) are **current-only**: rename them to the new version (`git mv`, history preserved) so git + descriptive per-file commits hold the superseded patch and the dir doesn't fill with near-duplicates. **Terminal records are kept standing, never renamed:** the per-pass `vX_Y_Z_GAP_REVIEW_<angle>.md` findings, `BUGS`, `FEEDBACK`, and `SESH` logs — they're cited forward and are the visible rigor trail. **Two carve-outs:** (1) when a living doc is *condensed/whittled* (a big rewrite, not a normal fold), keep a diffable pre-condense copy (`…_2.md`) so the human's inline notes aren't silently lost; (2) *dead-end **decisions** within a doc* stay in context (anti-mixed-truth — a content rule, distinct from keeping old version *files*). This relaxation rides on consistent, descriptive commits; without them, prefer keeping copies. (Early drafts of this doc imagined keep-every-file as the norm before real flow was recorded — this is the reconciliation.) **Don't strand an empty directory:** when work *leaves* a `vX_Y/` dir for the next, drop a copy of that dir's final-state living docs so it isn't left empty (the standing records usually keep it populated; this just covers the case where a dir would otherwise empty out).
+**Archiving GAP REVIEW surfaced revisions — current-only living docs; keep the records.** When GAP REVIEWS bump from revisions they surfaced, the **living planning docs** (the IMPLEMENT + its addendums + the review-prompt charters) are **current-only**: rename them to the new version (`git mv`, history preserved) so git + descriptive per-file commits hold the superseded patch and the dir doesn't fill with near-duplicates. **Terminal records are kept standing, never renamed:** the per-pass `vX_Y_Z_GAP_REVIEW_<angle>.md` findings, `BUG_REPORT`, and `FEEDBACK` logs — they're cited forward and are the visible rigor trail. **Two carve-outs:** (1) when a living doc is *condensed/whittled* (a big rewrite, not a normal fold), keep a diffable pre-condense copy (`…_2.md`) so the human's inline notes aren't silently lost; (2) *dead-end **decisions** within a doc* stay in context (anti-mixed-truth — a content rule, distinct from keeping old version *files*). This relaxation rides on consistent, descriptive commits; without them, prefer keeping copies. (Early drafts of this doc imagined keep-every-file as the norm before real flow was recorded — this is the reconciliation.) **Don't strand an empty directory:** when work *leaves* a `vX_Y/` dir for the next, drop a copy of that dir's final-state living docs so it isn't left empty (the standing records usually keep it populated; this just covers the case where a dir would otherwise empty out).
 
-**Delimiters:** dots everywhere (`v3.1.2`, git tags, commit messages) **except filenames**, which use underscores (`v3_1_2_IMPLEMENT.md`) — dots in filenames have caused tooling issues. **Git tags are pure numeric, no suffixes** (`v3.1.2`, never `v3.1.2-fix`); human labels go in the commit body / GitHub Release. Re-pointing a tag = delete + recreate, never `-v2`.
+**Delimiters + tag hygiene** (dots except in filenames, pure-numeric git tags, re-point = delete-and-recreate) are catalogued in `.agents/DIRECTORY_PROTOCOL.md § Versioning`.
 
-### As-built doc-sync — derive the architecture doc from the build guide, never from memory
+### As-built doc-sync — bring the architecture doc current with a FRESH agent
 
-When a build's gate clears and execution completes, the living architecture doc (e.g. `EVERLASTINGS_STORE.md`) is brought current as a **distinct task run by a FRESH agent** — never as the tired tail-end of the executing session. The failure it prevents: an executor whose context is nearly full summarizes the doc from memory, silently dropping/distorting details — stale lines then poison every future cold review (reviewers can only reason from the doc) and mis-frame fresh instances. (Everlastings: a hasty as-built left the doc's header a whole release behind and ~10 stale `AR`s, incl. a "sale sets quantity=0" line the webhook never did — which manufactured false gap-review findings.)
+When a build's gate clears and execution completes, the living architecture doc (e.g. `EVERLASTINGS_STORE.md`) is brought current as a **distinct task run by a fresh agent** — never as the tired tail-end of the executing session. The failure it prevents: an executor whose context is nearly full summarizes the doc from memory, silently dropping/distorting details — stale lines then poison every future cold review (reviewers can only reason from the doc). The fresh agent reads the architecture doc **end-to-end, linearly, like a human** (no chunked/grep reads, so it coheres and contradictions surface), walks the executed IMPLEMENT and the git history as the change-source, and folds the changes in — with the **actual code as the tiebreaker** (cite `file:line`) wherever plan and doc disagree on behavior. Two landmines: the doc's top Status/Version header often drifts a release behind the code (treat it as suspect *first*), and stale `file:line` anchors survive code growth (re-open the file before trusting a cited line).
 
-- **Inputs + method:** the fresh agent (1) reads the architecture doc **end-to-end, linearly, like a human** — no chunked/grep reads — so it coheres in mind and contradictions surface; (2) walks the **build-adjusted IMPLEMENT line by line** as the change-source, with the **BUILD_REPORT** for build-time deltas; (3) folds essentially everything from the IMPLEMENT into the architecture doc; (4) where the IMPLEMENT/report and the doc disagree on a **behavior, the actual code is the tiebreaker** (cite `file:line`) — a plan-vs-doc pass alone can't catch a doc-vs-code drift.
-- **Upstream aid (cheaper than re-deriving):** each IMPLEMENT phase carries a one-line **`Doc impact:`** annotation naming the architecture-doc fact it creates/changes (most copy/CSS steps = "none"), so the as-built becomes *apply the annotations* + the coherence read, not re-derive from scratch. **Not** a separate doc-updates addendum — that re-creates the very drift. Truth order: **IMPLEMENT (incl. its `Doc impact:` lines) → BUILD_REPORT deltas → code.** The BUILD_REPORT stays **deviations-from-IMPLEMENT only** (lean = trustworthy).
-- **Two landmines for the reconciler + every cold reviewer:** (a) the doc's top **Status/Version/Build-Guide header drifts a release behind the code** — treat it as suspect *first*, verify against the newest `*_BUILD_REPORT.md` before trusting the body; (b) **stale `file:line` anchors survive code growth** — never carry a cited line forward without re-opening the file to confirm the behavior still lives there.
+### The core documents (all in `docs/archive/vX_Y/`)
 
-### The four file types (all in `docs/archive/vX_Y/`)
+Canonical filenames + the directory tree live in `.agents/DIRECTORY_PROTOCOL.md`; this section carries the *method* each doc holds.
 
-- **`vX_Y_Z_IMPLEMENT.md`** — the evolving plan for one initiative; the living roadmap (there is no separate MASTER). Iterates by revision; the highest-numbered one is active. **Through the gap-review loop the living plan is *current-only*: a revision bump renames it (`git mv`, history preserved) and git holds the superseded patches** — don't pile up near-duplicate standing copies (see *Versioning → Archiving a revision*). Header: `Initiative` + `Revision driven by`.
-- **`YYYY_MM_DD_SESH.md`** — the session log; date-named (event in time). Checkboxes marked **live**, not at the end. Header: `Driving` + `Type`. Close with footers: `## Session Notes`, `## Picked Up From / Stopped At`, `## Open Threads For Next Session`.
-- **`vX_Y_Z_TRACK_<LETTER>_BUILD.md`** (or `vX_Y_Z_BUILD.md` for single-track/patch) — the frozen, exclusively-executable chunk handed to one orchestrator. Letter labels (A/B/C), not descriptive names that pigeonhole when scope grows. Created **only after the gap-gate clears.** A `BUILD` is for carving *ready slices* out of a plan still being completed (the incremental/app shape — ship what's executable while planning continues). A complete *plan-it-all* needs **no** separate BUILD file: its gate-cleared IMPLEMENT *is* the executable guide, run directly at the execution version. Both are the same thing — a ready-to-execute guide; the only question is *whether you carve one* (§ *Two operating modes*).
-- **`vX_Y_Z_BUGS.md`** — bug log tied to a release; **kept standing** (a terminal record, cited later). In patch mode, a confirmed cluster can promote straight to a small BUILD. *How bugs flow into versions* (the recorded flow, not the early guess): a fix found **on the fly during a build** is recorded in the BUILD_REPORT — no new IMPLEMENT; a **provided bug list** that needs research/planning gets a **genuinely new** IMPLEMENT round (new planning ⇒ a new doc, not a rename of a prior one).
+- **`vX_Y_Z_IMPLEMENT.md`** — the evolving plan for one initiative; the living roadmap (there is no separate MASTER). Iterates by revision; the highest-numbered one is active. **Through the gap-review loop the living plan is *current-only*: a revision bump renames it (`git mv`, history preserved) and git holds the superseded patches** — don't pile up near-duplicate standing copies (see *Versioning → Archiving a revision*). Once the gate clears, this same doc is **executed directly** — there is no separate frozen "BUILD" file. Header: `Initiative` + `Revision driven by`.
+- **`vX_Y_Z_BUG_REPORT.md`** — bug log tied to a release; **kept standing** (a terminal record, cited later). *How bugs flow into versions:* a fix found on the fly during execution is captured in git and folds into the next IMPLEMENT round; a **provided bug list** that needs research/planning gets a **genuinely new** IMPLEMENT round (new planning ⇒ a new doc, not a rename of a prior one).
+- **`vX_Y_Z_FEEDBACK.md`** — human review of an IMPLEMENT round; version-named, kept standing.
+- **Unversioned sketch files** — notes whose actionable content migrates into the next IMPLEMENT, then move to `processed/`.
 
-Plus dated **`YYYY_MM_DD_FEEDBACK.md`** (human review of an IMPLEMENT round) and **unversioned sketch files** (notes whose actionable content migrates into the next IMPLEMENT, then move to `processed/`).
+The session's progress lives in **git history** (frequent, descriptive per-file commits), not a session-log file; cross-session handoff is the **compact arg + tended memory** (§ *How we work*).
 
-### Two operating modes — route correctly
+### Two routes — feature vs patch
 
-- **Initiative mode** (default for features): architecture involved, genuine planning. One IMPLEMENT iterated 0→1→2→… through the gap-gate, then **executed** — either **directly from the gate-cleared IMPLEMENT** (a complete plan-it-all, the orchestrator parallelizing via subagent groupings) or **carved into one or more TRACK BUILDs** sized to natural execution boundaries (a subsystem, a layer, a file cluster) when slices ship while planning continues, or the ship is too big for one session. **Which arrangement is a planning-time call**, not a default.
-- **Patch mode** (bug fix / trivial polish, root cause known, no architecture): BUGS → small `vX_Y_Z_BUILD.md` → ship. The IMPLEMENT loop is skipped. The small-build pattern is *right* here and *wrong* for feature work.
+- **Feature work** (default; architecture involved, genuine planning): one IMPLEMENT iterated 0→1→2→… through the gap-gate, then **executed directly from the gate-cleared IMPLEMENT** — the orchestrator parallelizing via subagent groupings across natural execution boundaries (a subsystem, a layer, a file cluster). How the work is split across subagents is a planning-time call, not a default.
+- **Patch** (bug fix / trivial polish, root cause known, no architecture): fix → verify → ship; git is the record. The IMPLEMENT loop is skipped. This shortcut is *right* here and *wrong* for feature work.
 
-> **The #1 trap (it stalled Thot): sizing initiative work as patch work** — cutting tiny BUILDs because the IMPLEMENT was structured by version-milestone. Initiative BUILDs are cut by execution boundary, **never** by feature/version unit.
+> **The #1 trap (it stalled Thot): sizing feature work as patch work** — chopping it into tiny throwaway units because the IMPLEMENT was structured by version-milestone. Feature work is split by execution boundary, **never** by feature/version unit.
 
 ### Roadmap ≠ build queue (how to chunk without fragmenting)
 
 The IMPLEMENT is the roadmap *and* the detailed plan, at two depths — keep them separate:
 - **The roadmap is coarse direction.** It names where things are headed; it is NOT a list of build units, and a milestone is NOT a version to ship.
-- **Only the imminent slice is detailed to executable depth.** Detailing the *entire* future to build-depth in one file is the opposite failure — a bloated, unbuildable IMPLEMENT. (Anti-pattern seen on Thot: a ~350KB IMPLEMENT beside a near-empty BUILD stub — everything planned, nothing executable.)
-- **Chunks promote to BUILD by readiness × execution boundary**, not by version. A chunk can be *large* (a whole subsystem) when that's the coherent boundary.
+- **Only the imminent slice is detailed to executable depth.** Detailing the *entire* future to executable depth in one file is the opposite failure — a bloated, unbuildable IMPLEMENT. (Anti-pattern seen on Thot: a ~350KB IMPLEMENT that was all roadmap and nothing executable.)
+- **A slice becomes ready-to-execute by readiness × execution boundary**, not by version. A slice can be *large* (a whole subsystem) when that's the coherent boundary.
 
 Two project shapes, same machinery:
-- **Plan-it-all** (e.g. a store launch): research/plan the whole product to gap-free, then **execute at one ship** — run the gate-cleared IMPLEMENT directly (the orchestrator parallelizing via subagent groupings) *or* carve it into parallel TRACK BUILDs if the ship is too big for one session. **Decide the arrangement when you can see the work**: Everlastings' v1.4 first build went one IMPLEMENT → split to tracks at the end → rearranged sequential-to-parallel right before execution, while its v2.0.0 store-management build is run directly by one orchestrator in one session — same machinery, different call.
+- **Plan-it-all** (e.g. a store launch): research/plan the whole product to gap-free, then **execute at one ship** — run the gate-cleared IMPLEMENT directly, the orchestrator parallelizing via subagent groupings (splitting into parallel subagent tracks if the ship is too big for one session). **Decide the arrangement when you can see the work.**
 - **Incremental** (e.g. an app that grows): the IMPLEMENT carries the **full vision as direction** (so you build to accommodate what's coming), but you detail + gate + ship **one coherent slice at a time** by execution boundary. You do NOT invent a version number per feature to decide the slicing.
 
 ### Directory & master docs
 
-```
-docs/
-├── archive/
-│   ├── images/  resources/        ← diagrams; pulled-in API/tech references
-│   ├── v1_0/  v1_1/  v2_0/ …       ← one subdir per MINOR; all that version's artifacts
-├── research/  planning/            ← optional; only if active heavy research/planning
-└── PROJECT_NAME.md                 ← living architecture / state / pitfalls doc
-```
+The full directory tree — with a worked visual-flow example — lives in `.agents/DIRECTORY_PROTOCOL.md § Directory Example`.
 
 The highest-numbered `vX_Y_Z_IMPLEMENT.md` IS the roadmap — there is no `IMPLEMENT_MASTER`. Two master docs live outside the archive:
 
 | Doc                    | Role                                                          | Updated when                   |
 | ---------------------- | ------------------------------------------------------------- | ------------------------------ |
 | `docs/PROJECT_NAME.md` | architecture, current state, design system, pitfalls (living) | every non-trivial change ships |
-| `.agents/DEV_RULES.md`  | rules of engagement (this doc)                                | a convention is added/changed  |
+| `.agents/DEV_RULES.md` | rules of engagement (this doc)                                | a convention is added/changed  |
 
-**Starter templates — `.agents/PROJECT_NAME.md` + `.agents/README.md`.** Both ship in every project's `.agents/` as ready-to-adapt starters, so you never write either from scratch: `.agents/PROJECT_NAME.md` is the seed for a project's living architecture doc (you copy it out and rename it for the project — e.g. it grew into `EVERLASTINGS_STORE.md`), and `.agents/README.md` is the base project README. They're kept in sync across projects via `filemgmt` (§ *Syncing*), and because they get refined naturally while being adapted in any one project, those improvements flow back to the fleet — so the templates only get better. When starting a new project, reach for these two first.
+**Starter templates — `.agents/_TEMPLATES/PROJECT_NAME.md` + `.agents/_TEMPLATES/README.md`.** Both ship in every project's `.agents/_TEMPLATES/` as ready-to-adapt starters, so you never write either from scratch: `PROJECT_NAME.md` is the seed for a project's living architecture doc (you copy it out and rename it for the project — e.g. it grew into `EVERLASTINGS_STORE.md`), and `README.md` is the base project README. They're kept in sync across projects via `filemgmt` (§ *Syncing*), and because they get refined naturally while being adapted in any one project, those improvements flow back to the fleet — so the templates only get better. When starting a new project, reach for these two first.
 
-Reference content (schemas, glossary, diagrams) lives in `PROJECT_NAME.md` and `archive/resources/`, **not** in IMPLEMENT/BUILD — a forcing function that keeps PROJECT_NAME honest. Conflict resolution: a *past* IMPLEMENT vs PROJECT_NAME → **PROJECT_NAME wins** (it's living); the *current* IMPLEMENT vs PROJECT_NAME → **IMPLEMENT wins** (PROJECT_NAME was likely neglected — update it). **Dead-end *decisions* stay in context** so future agents read a live decision against what it replaced — a **content** rule (anti-mixed-truth), distinct from keeping old version *files* (those follow *Versioning → Archiving a revision*).
+Reference content (schemas, glossary, diagrams) lives in `PROJECT_NAME.md` and `archive/resources/`, **not** in the IMPLEMENT — a forcing function that keeps PROJECT_NAME honest. Conflict resolution: a *past* IMPLEMENT vs PROJECT_NAME → **PROJECT_NAME wins** (it's living); the *current* IMPLEMENT vs PROJECT_NAME → **IMPLEMENT wins** (PROJECT_NAME was likely neglected — update it). **Dead-end *decisions* stay in context** so future agents read a live decision against what it replaced — a **content** rule (anti-mixed-truth), distinct from keeping old version *files* (those follow *Versioning → Archiving a revision*).
 
 ### Where information lives — route by scope (don't put cross-cutting facts in the wrong tier)
 
@@ -288,10 +290,10 @@ Two routing traps: (1) cross-project but **not** protocol — measured calibrati
 **If you find missing context**: PROJECT_NAME.md is living — confirm with the human and update it; don't paper over the gap here.
 
 ## Roadmap (coarse direction — NOT a build queue)
-[Where this initiative is headed. Brief. Milestones are direction, not version-ships and not BUILD units.]
+[Where this initiative is headed. Brief. Milestones are direction, not version-ships and not execution units.]
 
 ## Imminent slice — [name] (detailed to executable depth)
-[The next coherent execution-boundary chunk: phases, file:line specifics, production-ready snippets, verification, rollback, subagent groupings. When this clears the gap-gate it's **ready to execute** — run directly (a complete plan-it-all) or promote to a BUILD packet (§ *Two operating modes*); sized by execution boundary, not by version.]
+[The next coherent execution-boundary chunk: phases, file:line specifics, production-ready snippets, verification, rollback, subagent groupings. When this clears the gap-gate it's **ready to execute** — run directly, the orchestrator parallelizing via subagent groupings (§ *Two routes*); sized by execution boundary, not by version.]
 
 ## Later (direction only)
 [Bulleted direction for what follows. Detail arrives as a slice approaches the gate — not before.]
@@ -299,26 +301,6 @@ Two routing traps: (1) cross-project but **not** protocol — measured calibrati
 ## Cross-references
 [Architecture/glossary → PROJECT_NAME.md · API/schemas → archive/resources/ · branching/versioning → DEV_RULES.md]
 ```
-
-### BUILD template (the frozen executable chunk)
-
-```markdown
-# v[X.Y.Z] Track [LETTER] Build Packet   (or: # v[X.Y.Z] Build Packet — [chunk]  for single-track/patch)
-**Source**: extracted from vX_Y_Z_IMPLEMENT.md § [section]
-**Branch**: [feat/fix branch]
-**Required reading first**: docs/PROJECT_NAME.md · THIS doc only — do NOT read prior IMPLEMENTs, BUGS, or BUILD_REPORTs
-
-## Pre-flight  [branch cut, deps, env, services]
-## Phase 0: Setup
-## Phase 1..N  [each step file:line specific; production-ready snippets, no placeholders]
-## Verification  [per-phase + end-to-end; orchestrator records actual results in the BUILD_REPORT]
-## Rollback  [per-phase]
-## Subagent Groupings  [parallel execution plan]
-## BUILD_REPORT_<source>.md to write when done:
-  - what changed (file-by-file one-liners) · what deviated (ideally empty) · gaps/bugs surfaced (do NOT pass-through) · verification results
-```
-
-The orchestrator returns `BUILD_REPORT_<source>.md` in the same directory (`<source>` mirrors the BUILD name minus `_BUILD` — e.g. `BUILD_REPORT_v5_0_3_TRACK_A.md`). Its findings fold back into the next IMPLEMENT round.
 
 ---
 
@@ -348,8 +330,8 @@ git checkout dev && git merge --ff-only feat/<name> && git push origin dev
 **🛑 PAUSE.** Tell the human it's live on the dev preview URL (in README / PROJECT_NAME) with a one-line summary. Do NOT ship to main until they sign off. Bug? Fix on `feat/*`, ff-merge to `dev`, push, ping again — production is untouched until step 3.
 
 ```bash
-# 3. Ship to main (after: tests pass · human signed off · PROJECT_NAME current · SESSION footers done ·
-#    BUILD_REPORT folded back · package.json bumped if applicable · build succeeds)
+# 3. Ship to main (after: tests pass · human signed off · PROJECT_NAME current ·
+#    package.json bumped if applicable · build succeeds)
 git checkout main && git merge --ff-only dev && git push origin main
 git tag vX.Y.Z && git push origin vX.Y.Z     # pure numeric tag, no suffix
 ```
@@ -380,80 +362,53 @@ A large IMPLEMENT can shed bulk into **addendums** — sibling docs it reference
 
 ---
 
-## Collaborating with Claude Design
+## Design — the funnel, the language, and Claude Design
 
-**Claude Design (CD)** is a Claude model in a sandbox: **no local filesystem; it reads GitHub (the primary channel) + the web**, and builds self-contained **vanilla HTML/CSS/JS** UIs in ~an hour at a quality bar past anything else we've gotten from AI. Because it can't touch the repo directly, every handoff routes **through GitHub** (push there, not "to Vercel" — CD often runs before any Vercel wiring exists). Same model family as you, so expect it to be sensible and to return its own integration + backend-notes docs. Three stages: **funnel → handoff+reply → mid-build collab.**
+The interactive-design method now lives in four dedicated, fleet-synced docs in `.agents/_DESIGN/` (extracted from this doc so each is perfected on its own). This section is the index — go to the doc for the detail:
 
-### Design funnel — surface the aesthetic
-Run the parallel-volley design funnel (research-lenses → board debate → decision → render) to generate rendered **vanilla-HTML option mocks** + a DESIGN_BRIEF; Sean picks by *poking the rendered HTML*, not reading prose. **Surface MORE THAN ONE winner** — render 2–3 finalist directions for selection, not a single collapsed pick (multiple finalists were central to the last UI's success; a lone "CEO decision" throws away option value). Input is one self-contained REQUIREMENTS brief; reference-site research is done live by the agents, current-UI screenshots deliberately withheld ("design to the requirements, not the current mess"). *Worked example:* `everlastings-website/assets/docs/archive/v3_5/portal-design-funnel/`.
+- **`.agents/_DESIGN/INTERACTIVE_DESIGN_LANGUAGE.md`** — the reusable aesthetic + interaction vocabulary (House taste, axes, technique library, product-archetype map, a divergence palette of named aesthetic "starts", the anti-slop craft bar). The WHAT you feed the funnel and hand to Claude Design. Reach for it to *name* a design direction.
+- **`.agents/_DESIGN/INTERACTIVE_DESIGN_PLAYBOOK.md`** — how to wield the Language: the levers, a briefing checklist, where-to-research, the visual-feedback vocabulary, the paste-ready anti-slop acceptance checklist. Reach for it when briefing or iterating.
+- **`.agents/_DESIGN/DESIGN_FUNNEL.md`** — the runnable, re-startable funnel that renders **multiple distinct named directions** to rank (no single grafted winner); ships the reusable Workflow script + spec template in `.agents/_DESIGN/`. Reach for it when the direction is open and you want rendered options.
+- **`.agents/_DESIGN/CLAUDE_DESIGN_COLLAB.md`** — the three-phase Claude Design handoff/return protocol (initial new-UI handoff / mid-build gap-list / return-after-implementation 1:1 re-sync), the contract seam + PORTABLE/SEAM/SANDBOX-ONLY tags, and the "describe what you built" round-trip prompt. Reach for it when handing a chosen direction to CD.
 
-### Direction A — new UI (the ideal path; do it early)
-Claude Code assembles a **handoff package with NO app code** ("design to the contract, don't integrate"):
-- `brief.md` — the prompt to CD: thesis, the chosen **aesthetic anchor** (`controls.html` + `tokens.css` lifted from the funnel winner — "match this exactly"), a KILL list, the surfaces/pages to build, mobile-first, the deliverable.
-- `data-flow.md` — high-level requirements as a **per-surface data/endpoint contract** (entities, reads, actions): "design to this contract; do not implement it."
-- `reference/` — annotated screenshots + a `LEGEND.md` classifying each (keep / refine / kill / target-layout).
-
-CD returns a self-contained UI package (`out/`: shared `portal.css` + `portal.js` + thin page shells + a **`data.js` mock seam** + per-surface app JS) with three cover docs Claude Code consumes:
-- **`INTEGRATION.md`** (read-me-first) — what's in `out/`, the design/backend boundary, and a **numbered list of gaps/decisions to reconcile** (each cites the endpoint/contract and what the server must do).
-- **`CHANGELOG_GAPS.md`** — every file tagged **PORTABLE** (pure front-end, safe drop-in — html / app.js / portal.js / portal.css) vs **SEAM** (`data.js` — swap the mock arrays for real API responses **without changing markup or class names**).
-- **`OPEN_QUESTIONS.md`** — the reverse channel: files CD wants back, decisions it locked, questions for the backend / Sean.
-
-Done **early**, this folds straight into the IMPLEMENT + gap-review loop — the UI's touch-points get accounted for *before* the build, which is the whole point. *Worked examples:* handoff `v3_5/design-handoff/` → reply `v4_0/from-claude-design/` + `v4_0/design-source/out/`.
-
-### Direction B — UI updates mid-build (a live project; more complex)
-When a shipped UI needs fixes, Claude Code writes a **version-prefixed `vX_Y_Z_CD_HANDOFF.md`** for Sean to hand CD directly. It tells CD:
-- **which live-repo directory to re-pull** from GitHub (e.g. `admin/`, branch `dev`), **mirroring the repo path 1:1** (no translation) and re-pulling HEAD before starting.
-- the **data contract** (design to it; don't implement the backend).
-- the **fix items** (lettered/numbered, each anchored to `file:line`), with **Sean's raw testing notes in `> Sean's words:` blocks** so intent travels with the spec, and **screenshots referenced by filename** (Sean pastes them in the CD chat — they're gitignored, so CD can't fetch them from the repo).
-- **sandbox-only mechanics** marked "do not port" (a fake-backend shim + a commented `<script>` line); `data.js` is the **SEAM** (port added fields/helpers, never overwrite mock rows). Expanding past the spec is *encouraged* — the fast prototype surfaces requirements we couldn't spec up front.
-
-CD returns the fixed files as byte-identical drop-ins plus a **fixed reply trio** in the next version dir:
-- **`README.md`** — the drop-in/verify guide (which files to overwrite, which to leave, diff-check after).
-- **`CHANGELOG_GAPS.md`** — per-file changes mapped to item IDs, tagged PORTABLE / SEAM / SANDBOX-ONLY.
-- **`OPEN_QUESTIONS.md`** — the backend/decision flags (addressed to Claude Code or Sean by name).
-
-Claude Code then reviews every changed file **line-by-line** — the deliberate *"hunt for backend work the UI silently created"* — wires the backend, tests on the dev preview, and ships dev→main on Sean's sign-off. *Worked example:* `v4_0/v4_0_9_CD_HANDOFF.md` → `v4_1/{README, CHANGELOG_GAPS, OPEN_QUESTIONS}.md`.
-
-### Handoff conventions
-- **Naming:** outbound handoff = `v{maj}_{min}_{patch}_CD_HANDOFF.md` (version-prefixed, CD-tagged, direction-in-name); inbound reply = the plain trio (`README.md` / `CHANGELOG_GAPS.md` / `OPEN_QUESTIONS.md`), versioned by its containing `vX_Y/` dir — the handoff filed under the version it was cut from, the reply under the version it lands in.
-- **The `data.js` mock layer is always the integration SEAM** — the one file that becomes real-API wiring; everything else is PORTABLE.
-- Ties into the **`D` design-correctness** gap-review angle and `vX_Y_Z_ADDENDUM_DESIGN.md` — CD's output is design that then gets gap-reviewed like any other; the `CD_HANDOFF` filename is already registered in `DIRECTORY_PROTOCOL.md`.
+Two integration facts stay here: CD's output is design that then gets **gap-reviewed like any other** via the **`D` design-correctness** angle (`vX_Y_Z_ADDENDUM_DESIGN.md`); the `CD_HANDOFF` filename is registered in `.agents/DIRECTORY_PROTOCOL.md`.
 
 ---
 
 ## Conventions
 
-- **Commits:** `type(scope): brief [vX.Y.Z]` + body bullets (`feat fix docs style refactor test chore`); word them to mirror the BUILD chunk so history maps to plan.
+- **Commits:** `type(scope): brief [vX.Y.Z]` + body bullets (`feat fix docs style refactor test chore`); word them to mirror the executed slice so history maps to plan.
 - **Drift:** fix protocol drift you hit (whether or not you caused it); if unsure it's drift, confirm with the human first.
-- **Research:** verify current docs while planning — never ship training-data recall as fact. Business-grade research only → `.agents/RESEARCH_PROTOCOL.md`.
+- **Research:** verify current docs while planning — never ship training-data recall as fact. `.agents/RESEARCH_PROTOCOL.md` is **only** for business-grade research (a formal business plan / market strategy); ordinary research for an IMPLEMENT build guide or a design funnel does **not** use it — that's just normal verify-as-you-go.
 - **CLI tools first.** Reach for the CLI before any manual or human step — `gh`, `vercel`, `docker`, Cloudflare, `filemgmt`. If a CLI can do it, an agent drives the CLI; don't hand the human a task a command would do.
 - **Agentic testing by default.** Verify by *driving the real thing* — Claude-in-Chrome, throwaway `.js` scripts, actual end-to-end runs against the preview — not by asking the human to test or reasoning that it's untestable. (Pairs with § *What "Exclusively Executable" Requires → No open human-action items*.)
 - **Skills:** globally-installed Agent Skills live under `~/.agents/skills` (the `npx skills add …` install dir) — **not** `~/.claude/skills`, where agents reflexively look and find nothing. When a task needs a skill, or a subagent must locate one, check/pass that path explicitly.
-- **Markdown tables ≤ ~100 cols.** Keep a table's total rendered width under ~100 monospace characters (any number of columns within that budget); past it, rows wrap and become unreadable in editors (and paste badly into Thot). If the data won't fit, drop the table for **grouped bullets** (one sub-list per row) — never a wider table. *Exception:* a doc read **only** by agents (e.g. a frozen BUILD) may keep a wider table when it genuinely conveys structure better than bullets — never in human-facing docs (IMPLEMENT, README, FEEDBACK, PROJECT_NAME).
+- **Markdown tables ≤ ~100 cols.** Keep a table's total rendered width under ~100 monospace characters (any number of columns within that budget); past it, rows wrap and become unreadable in editors (and paste badly into Thot). If the data won't fit, drop the table for **grouped bullets** (one sub-list per row) — never a wider table. *Exception:* a doc read **only** by agents (e.g. a gate-cleared IMPLEMENT) may keep a wider table when it genuinely conveys structure better than bullets — never in human-facing docs (IMPLEMENT, README, FEEDBACK, PROJECT_NAME).
 - **Prose soft-wraps; never hard-wrap a paragraph.** Write each paragraph/bullet as **one logical line** and let the editor wrap to the window — do not insert manual line breaks mid-paragraph. A single newline renders as a space, so hard-wrapping changes nothing visible but multiplies physical lines, and these docs get cited by line number constantly: a hard-wrapped paragraph spans many numbered lines, so a human pointing at "line 76" (the block) and an agent pointing at "line 81" (a sentence inside it) are both right about *different* lines — soft-wrapped, the whole paragraph is one number and they agree. **Never reflow inside a fenced ` ``` ` code block or a table** — those carry significant newlines / column alignment and *are* the anchors (the byte-exact CURRENT/NEW quotes). Reflowing prose is always safe; touching a fence or table is never. (Claude Code's doc output hard-wraps prose by habit — strip it.)
-- **Human-formatted docs are opt-in — not the default.** Default formatting is dense (one logical line, delimiter-rich) — that's how agents ingest best. **Only** when Sean says **"human-formatted"** (or a doc is unmistakably Sean-only and agent-read by no one) switch to the cognitive-load-first layout in `.agents/HUMAN_FORMATTING.md` (foldable indentation, one-idea-per-line lists, `+`/`-` markers, colon-outside-bold). Never apply it to agent-read docs (IMPLEMENT / BUILD / ADDENDUM / gap-review / reports). If unsure, stay dense and ask.
-- **Testing:** the BUILD carries the verification plan; the orchestrator records results in the BUILD_REPORT.
+- **Human-formatted docs are opt-in — not the default.** Default formatting is dense (one logical line, delimiter-rich) — that's how agents ingest best. **Only** when Sean says **"human-formatted"** (or a doc is unmistakably Sean-only and agent-read by no one) switch to the cognitive-load-first layout in `.agents/HUMAN_FORMATTING.md` (foldable indentation, one-idea-per-line lists, `+`/`-` markers, colon-outside-bold). Never apply it to agent-read docs (IMPLEMENT / ADDENDUM / gap-review / reports). If unsure, stay dense and ask.
+- **Testing:** the IMPLEMENT (or its `_ADDENDUM_TESTING`) carries the verification plan; results are recorded in git commits, not a separate report.
+- **Media + services:** project media → `cdn.august.style` (Cloudflare R2); the upload flow (images → auto-`.webp`, video → `aws` to R2) is in `.agents/CDN_GUIDE.md`. Email → **Resend** (Cloudflare send/receive is the one we're evaluating).
 - **Syncing:** one canonical copy → every project via `filemgmt -f ~/Development -r <path>/.agents/DEV_RULES.md` (new shared files: `-a`). `.agents/PROJECT_LESSONS.md` is per-project, not synced. The protocol dir is now **`.agents/`** (plural, the industry standard); `filemgmt` syncs to both `.agent/` and `.agents/` during the migration.
 
 ---
 
 ## Agent Quickstart
 
-**Read first (no exceptions):** `docs/PROJECT_NAME.md` → `README.md` → your assigned doc (a BUILD if executing; the highest-numbered `vX_Y_Z_IMPLEMENT.md` if planning) → `.agents/PROJECT_LESSONS.md` (skim).
+**Read first (no exceptions):** `docs/PROJECT_NAME.md` → `README.md` → the highest-numbered `vX_Y_Z_IMPLEMENT.md` (your executable guide if it's gate-cleared, your working plan if you're still planning) → `.agents/PROJECT_LESSONS.md` (skim).
 
-**If you're planning, the gap-gate IS the job:** draft → fresh-instance review (3 angles) → fold → repeat → human approves → promote to BUILD. **No code before the gate.**
+**If you're planning, the gap-gate IS the job:** draft → fresh-instance review (3 angles) → fold → repeat → human approves → execute. **No code before the gate.**
 
-**As you work:** mark SESSION checkboxes live; if the plan is wrong, stop + surface + start a new SESSION (don't silently patch); confirm via `git diff` before commit.
+**As you work:** commit often — per file, descriptive — so git holds the progress; if the plan is wrong, stop + surface + fold it into the next IMPLEMENT revision (don't silently patch); confirm via `git diff` before commit.
 
-**Before closing:** SESSION footers; `BUILD_REPORT_<source>.md` if you ran a BUILD; update `PROJECT_NAME.md` if architecture changed; commit mirroring the chunk.
+**Before closing:** update `PROJECT_NAME.md` if architecture changed; leave the git history as the session record (frequent, descriptive commits); write a compact arg only if Sean asks.
 
 **You do NOT:**
-- read past IMPLEMENTs / BUGS / FEEDBACK / BUILD_REPORTs during a build (already folded into your BUILD);
+- read past IMPLEMENTs / BUG_REPORT / FEEDBACK during a build (already folded into your gate-cleared IMPLEMENT);
 - edit a current IMPLEMENT mid-build, or backfill an earlier one to fold findings — fold into the **next** revision (bump it; through the gap-review loop that's a rename — *Versioning → Archiving a revision*);
-- write a separate "completion/walkthrough" file (footers go in SESSION; orchestrator findings in BUILD_REPORT);
+- write a separate "completion/walkthrough" file (the git history is the record);
 - create archive dirs at major-version level (`v3_0/`, never `v3/`);
-- put reference content in IMPLEMENT/BUILD (→ PROJECT_NAME / archive/resources);
-- pass-through fixes between sequential tracks;
+- put reference content in the IMPLEMENT (→ PROJECT_NAME / archive/resources);
+- pass-through fixes between execution chunks;
 - **self-certify the plan, or substitute in-session subagents for the fresh-instance gap-review gate.**
 
 ---
@@ -462,6 +417,8 @@ Claude Code then reviews every changed file **line-by-line** — the deliberate 
 
 One line per meaningful version; full history + rationale in git.
 
+- **v4.4.0** (2026-07-10) — retired the `BUILD` / `TRACK_BUILD` / `BUILD_REPORT` / `SESH` file-types now that execution runs directly from the gate-cleared IMPLEMENT, git history is the progress log, and cross-session handoff is the compact arg + tended memory. Added a near-top **How we work** day-to-day section (start-from-templates, never-budget-tokens, skills, CLI-over-MCP, git-as-log, memory, compaction); simplified the as-built sync, the core-documents list, and feature-vs-patch routing; fixed the starter-template paths to `.agents/_TEMPLATES/`; added the **Media + services** convention pointing at the new `.agents/CDN_GUIDE.md`.
+- **v4.3.0** (2026-07-09) — extracted the interactive-design method out of this doc into four dedicated, fleet-synced `.agents/` docs: `INTERACTIVE_DESIGN_LANGUAGE.md` (axes, technique library, archetype map, a divergence palette of named starts), `INTERACTIVE_DESIGN_PLAYBOOK.md` (levers, briefing + feedback vocabulary), `DESIGN_FUNNEL.md` (the re-runnable funnel + `_TEMPLATES/design_funnel.mjs`, now rendering **multiple distinct named directions** by default instead of one grafted winner), and `CLAUDE_DESIGN_COLLAB.md` (the three-phase handoff + the "describe what you built" round-trip). Replaced the inline `## Collaborating with Claude Design` section with a four-doc index stub — the start of DEV_RULES becoming an index.
 - **v4.2.0** (2026-07-09) — added `## Deployment — Vercel, Cloudflare & Preview Environments` (preview-protection-off-in-dev, the `.env.reference` per-env key file, Cloudflare-CLI subdomains), `## Collaborating with Claude Design` (funnel → handoff/reply → mid-build, PORTABLE/SEAM, the `CD_HANDOFF` + reply-trio conventions, "more than one funnel winner"), `### No open human-action items`, and the *CLI-first* + *agentic-testing-by-default* conventions; renamed the protocol dir `.agent/` → `.agents/`; decluttered the masthead (this version-by-version changelog moved here off the top).
 - **v4.1.0** — formalized the gap-review loop mechanics from the Everlastings v3.2 gate: the three-part review lens, flag-don't-assert + validate-then-fold, the "Settled — do not re-raise" landmines ledger, the trichotomy verdict, angle-by-angle close, end-game cleanup, orchestrator compact-forward hygiene, "the gate is never the first reviewer."
 - **v4.0.13** — As-built doc-sync: a fresh agent derives the architecture doc from the build-adjusted IMPLEMENT + BUILD_REPORT with code as tiebreaker; `Doc impact:` phase annotations.
@@ -471,7 +428,7 @@ One line per meaningful version; full history + rationale in git.
 - **v4.0.9** — human-formatted-docs convention (`.agents/HUMAN_FORMATTING.md`), opt-in only.
 - **v4.0.8** — BUILD vs IMPLEMENT clarified; execution arrangement (one orchestrator vs split tracks) is a planning-time call.
 - **v4.0.7** — Versioning → archiving a revision: living planning docs current-only, terminal records kept standing.
-- **v4.0.6** — Addendums (`_ADDENDUM_DESIGN` / `_ADDENDUM_TESTING`), lockstep-versioned, always in review scope.
+- **v4.0.6** — Addenda (`_ADDENDUM_DESIGN` / `_ADDENDUM_TESTING`), lockstep-versioned, always in review scope.
 - **v4.0.5** — "Where information lives" — the five memory tiers, routed by scope.
 - **v4.0.4** — breadth pass on every version-push; phase-demarcation versioning for long gate loops.
 - **v4.0.3** — `.agents/PROJECT_NAME.md` + `.agents/README.md` starter templates.
