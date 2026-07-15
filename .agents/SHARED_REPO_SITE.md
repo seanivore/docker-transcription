@@ -58,14 +58,15 @@
 
   Four things have to be true. Check them first; two of them are not yours to fix.
 
-  + **A Vercel token exists.** The CLI already stores one. Do not mint another.
+  + **A Vercel token exists** — but it **expires.** The CLI stores a short-lived OAuth token (`auth.json` has `expiresAt` + `refreshToken`); do not mint another, **refresh** it. Run `vercel whoami` first — it silently refreshes the stored token. Skip that and a stale token answers `invalidToken` / `Not authorized` on every call, even though `vercel whoami` itself works. This is the single most common "why is it wonky for this agent" trap.
   + **The apex domain is already on the Vercel account.** If it is, attaching a subdomain verifies instantly. If it is **not**, stop and ask — adding an apex is a different, human-facing job.
   + **A DNS API token is in the shell.** `$CLOUDFLARE_API_TOKEN`, exported from `~/.zshrc`.
   + **The repo is connected to the Vercel account.** It is, if any project from this repo already deploys.
 
-  Pull the token
+  Pull the token — **refresh it first**, or it may be expired:
 
 ```sh
+vercel whoami >/dev/null   # silently refreshes the stored OAuth token
 TOKEN=$(jq -r '.token' "$HOME/Library/Application Support/com.vercel.cli/auth.json")
 ```
 
